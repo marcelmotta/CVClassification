@@ -6,6 +6,12 @@ import os
 import re
 
 from gensim.models import Word2Vec
+import nltk
+from nltk.corpus import stopwords
+from nltk.probability import FreqDist
+from nltk.classify import NaiveBayesClassifier as nbc
+import random
+
 
 # IMPORTING DATASET
 accepted = [(x)+"\\"+(i) for x,y,z in os.walk(os.getcwd()) for i in z if (x[-3:] == 'pos' and i[-4:] == ".pdf")]
@@ -71,10 +77,48 @@ class CVparser:
             out.extend(text3)
         return out
             
+    def getTokens_bow(self):
+        out = []
+        stoplist = stopwords.words('english')
+        for file in self.getText():
+            text = file[0]
+            text1 = [text[i].split() for i in range(len(text))]
+            text2 = [i for j in text1 for i in j if isinstance(j, list)]
+            text3 = [i for i in text2 if i != []]
+            text4 = [i.lower() for i in text3]
+            text5 = [i for i in text4 if i not in stoplist]
+            out.extend([(text5, self.status)])
+        return out
+    
+class learner:
+    def __init__(self, sample):
+        self.sample = sample
         
-out1 = CVparser(accepted, "pos").getText()
-out2 = CVparser(accepted, "pos").cleanText()
+    def trainNBC(self):
+        # SHUFFLE SAMPLE FOR RANDOM INITIALIZATION
+        random.shuffle(self.sample)
+        
+        # DEFINE WORDS AS KEYS AND OCCURENCES AS VALUES
+        word_features = FreqDist([x for y,z in self.sample for x in y])
+        word_features = list(word_features.keys())#[:1000]
+
+        # TERM-DOC MATRIX, SAMPLING TRAIN AND TEST SETS AT 80-20
+        numtrain = int(len(self.sample) * 80 / 100)
+        train_set = [({i:(i in tokens) for i in word_features}, tag) for tokens,tag in self.sample[:numtrain]]
+        test_set = [({i:(i in tokens) for i in word_features}, tag) for tokens,tag in self.sample[numtrain:]]
+
+        # RUN CLASSIFIER AND RETURN PERFORMANCE MEASURES
+        classifier = nbc.train(train_set)
+        print(nltk.classify.accuracy(classifier, test_set)*100)
+        classifier.show_most_informative_features(5)
+
+        
+out1 = CVparser(accepted, 'pos').getText()
+out2 = CVparser(accepted, 'pos').cleanText()
 out3 = CVparser(accepted, 'pos').getTokens()
+out4 = CVparser(accepted, "pos").getTokens_bow()
 
 test = Word2Vec(out3)
 print(list(test.wv.vocab))
+
+
