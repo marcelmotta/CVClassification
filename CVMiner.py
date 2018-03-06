@@ -6,11 +6,14 @@ import os
 import re
 
 from gensim.models import Word2Vec
-import nltk
 from nltk.corpus import stopwords
 from nltk.probability import FreqDist
 from nltk.classify import NaiveBayesClassifier as nbc
+import nltk
 import random
+
+from sklearn.decomposition import PCA
+from matplotlib import pyplot
 
 
 # IMPORTING DATASET
@@ -95,6 +98,7 @@ class learner:
         self.sample = sample
         
     def trainNBC(self):
+        """ Baseline algorithm for benchmark purposes using CBOW """
         # SHUFFLE SAMPLE FOR RANDOM INITIALIZATION
         random.shuffle(self.sample)
         
@@ -107,18 +111,34 @@ class learner:
         train_set = [({i:(i in tokens) for i in word_features}, tag) for tokens,tag in self.sample[:numtrain]]
         test_set = [({i:(i in tokens) for i in word_features}, tag) for tokens,tag in self.sample[numtrain:]]
 
-        # RUN CLASSIFIER AND RETURN PERFORMANCE MEASURES
-        classifier = nbc.train(train_set)
-        print(nltk.classify.accuracy(classifier, test_set)*100)
-        classifier.show_most_informative_features(5)
-
+        # TRAIN LEARNER AND RETURN PERFORMANCE MEASURES
+        model = nbc.train(train_set)
+        print(nltk.classify.accuracy(model, test_set)*100)
+        print(model.show_most_informative_features(5))
+        
+    def trainW2V(self):
+        # TRAIN LEARNER AND RETURN WORD VECTORS FOR THE VOCABULARY
+        model = Word2Vec(self.sample, size = 100, window = 5, min_count = 1)
+        return model[model.wv.vocab], list(model.wv.vocab)
+        
         
 out1 = CVparser(accepted, 'pos').getText()
 out2 = CVparser(accepted, 'pos').cleanText()
 out3 = CVparser(accepted, 'pos').getTokens()
 out4 = CVparser(accepted, "pos").getTokens_bow()
 
-test = Word2Vec(out3)
-print(list(test.wv.vocab))
+# TRAIN MODEL, WORDS OCCURRING AT LEAST ONCE (min_count), VECTOR SIZE = 100, WINDOW SIZE = 5
+wrdvector, words = learner(out3).trainW2V()
 
+# GETTING WORD VECTORS AND CHECKING SIMILARITIES
+#test["analytics"]
+#test.most_similar("good", topn = 5)
+#test.similarity(["good"],["analytics"])
+
+# PLOT WORD VECTORS WITH PCA
+zscores = PCA(n_components= 2).fit_transform(wrdvector)
+pyplot.scatter(zscores[:, 0], zscores[:, 1])
+for i,j in enumerate(words):
+    pyplot.annotate(j, xy = (zscores[i, 0], zscores[i, 1]))
+pyplot.show()
 
