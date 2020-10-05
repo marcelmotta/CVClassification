@@ -1,2 +1,2 @@
 # CVClassification
-Document classification for evaluating CVs.
+Document classification pipeline for evaluating CVs.
