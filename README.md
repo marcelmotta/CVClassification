@@ -1,2 +1,2 @@
 # CVClassification
-Document classification using Convolutional Neural Networks for evaluating CVs.
+Document classification for evaluating CVs.
